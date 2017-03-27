@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sort"
 	"syscall"
+	"time"
+	"regexp"
 	"path/filepath"
 	"io/ioutil"
 	"os/exec"
@@ -48,9 +50,12 @@ func main() {
 	run := func(config string) chan bool {
 		success := make(chan bool, 1)
 		if !started {
-			caddy.Start()
-			started = true
-			success <- true
+			go func() {
+				caddy.Start()
+				started = true
+				time.Sleep(time.Second * 2)
+				success <- true
+			}()
 		} else {
 			go func() {
 				for line := range log.Lines {
@@ -208,6 +213,10 @@ func (this *Remap) Config(watcher *fsnotify.Watcher) string {
 		files, _ := ioutil.ReadDir(path)
 		for _, file := range files {
 			if file.IsDir() {
+				match, _ := regexp.MatchString("^[a-z][a-z0-9\\.\\-]+$", file.Name())
+				if (!match) {
+					continue
+				}
 				location := filepath.Join(path, file.Name())
 				caddyFile := filepath.Join(location, CADDY_FILE)
 				handle, err := os.Open(caddyFile)
